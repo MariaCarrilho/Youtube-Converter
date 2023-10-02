@@ -1,3 +1,4 @@
+import os.path
 import threading
 from tkinter import ttk
 import tkinter as tk
@@ -31,23 +32,31 @@ def handle_converter():
     yt = YouTube(url)
     yt.register_on_progress_callback(progress_callback)
     yt.register_on_complete_callback(complete_callback)
-    mp4_files = yt.streams.filter(file_extension="mp4")
-    video = mp4_files.get_highest_resolution()
+    match type.get():
+        case "mp4":
+            mp4_files = yt.streams.filter(file_extension=type.get())
+            video = mp4_files.get_highest_resolution()
+        case "mp3":
+            video = yt.streams.filter(only_audio=True).first()
+
     if video is not None:
         print("Video found:", video)
+        frame_convert.pack_forget()
+        frame_download.pack()
     else:
         print("No suitable video stream found.")
-    frame_convert.pack_forget()
-    frame_download.pack()
 
 
 def download_thread():
-    video.download()
+    out_file = video.download()
+    if type.get() == "mp3":
+        base, ext = os.path.splitext(out_file)
+        new_file = base + "." + type.get()
+        os.rename(out_file, new_file)
 
 
 def handle_download():
-    if video is not None:
-        threading.Thread(target=download_thread).start()
+    threading.Thread(target=download_thread).start()
 
 
 if __name__ == "__main__":
@@ -75,24 +84,30 @@ if __name__ == "__main__":
     label.pack(expand=True)
     label.place(relx=0.5, rely=0.5, anchor="center")
 
-    frame_convert = tk.Frame(master=window, width=300, height=300)
+    frame_convert = tk.Frame(master=window, width=400, height=300)
     frame_convert.pack()
-
-    frame_download = tk.Frame(master=window, width=300, height=300)
-
-    perc = tk.Label(master=frame_download, text="")
-    perc.place(relx=0.5, rely=0.3, anchor="center")
-
-    pb = ttk.Progressbar(frame_download, orient='horizontal', mode="determinate", length=280)
-    pb.place(relx=0.5, rely=0.2, anchor="center")
 
     ent_url = tk.Entry(master=frame_convert)
     ent_url.pack()
-    ent_url.place(relx=0.5, rely=0.2, anchor="center")
+    ent_url.place(relx=0.3, rely=0.2, anchor="center")
+
+    type = tk.StringVar()
+    type_choosen = ttk.Combobox(frame_convert, width=6, textvariable=type)
+    type_choosen['values'] = ('mp4', 'mp3')
+    type_choosen.place(relx=0.8, rely=0.2, anchor="center")
+    type_choosen.current(1)
 
     btn_convert = tk.Button(frame_convert, text="Converter", command=handle_converter)
     btn_convert.pack()
     btn_convert.place(relx=0.5, rely=0.5, anchor="center")
+
+    frame_download = tk.Frame(master=window, width=300, height=300)
+
+    perc = tk.Label(master=frame_download, text="", font=("Montserrat", 8))
+    perc.place(relx=0.5, rely=0.3, anchor="center")
+
+    pb = ttk.Progressbar(frame_download, orient='horizontal', mode="determinate", length=280)
+    pb.place(relx=0.5, rely=0.2, anchor="center")
 
     btn_download = tk.Button(frame_download, text="Download", command=handle_download)
     btn_download.pack()
